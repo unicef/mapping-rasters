@@ -7,6 +7,7 @@
 
 ### Install
 Follow link above to install the [GDAL](http://www.gdal.org) library.
+
 `git clone git@github.com:unicef/mapping-rasters.git`
 `cd mapping-rasters`
 `mkdir data`
