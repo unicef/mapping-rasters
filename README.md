@@ -8,10 +8,10 @@
 ### Install
 Follow link above to install the [GDAL](http://www.gdal.org) library.
 
-`git clone git@github.com:unicef/mapping-rasters.git`
-`cd mapping-rasters`
-`mkdir data`
-`cp config-sample.js config.js`
+- `git clone git@github.com:unicef/mapping-rasters.git`
+- `cd mapping-rasters`
+- `mkdir data`
+- `cp config-sample.js config.js`
 
 ### Try it out with this sample use case
 Satellites take images of the earth. Based on the amount of light seen at night in any region, it's possible to estimate population. Let's aggregate the popluation of Colombia by municpality, or, in UN terms, [administrative region](https://en.wikipedia.org/wiki/Administrative_division) level 2!
