@@ -19,10 +19,14 @@ Satellites take images of the earth. Based on the amount of light seen at night 
 - Download "COL_ppp_v2b_2015_UNadj" to data directory
 
 The raster is encoded as a tif, so we **could** convert to text with [gdal_translate](http://www.gdal.org/gdal_translate.html):
-  `gdal_translate -of AAIGrid input.tif output.asc`
-However, this file is 1.5G and has 21,152 rows times 17,883 columns of data. That command outputs a 9G file with 378,261,216 data points!
 
-To accelerate aggregation, we can reduce the size of the output with the -outsize option:  `gdal_translate -of AAIGrid -outsize 25% 25% input.tif output.asc`
+  `gdal_translate -of AAIGrid input.tif output.asc`
+
+However, this file is 1.5G and has 21,152 rows times 17,883 columns of data. That command outputs a 2.5G file with 378,261,216 data points!
+
+To accelerate aggregation, we can reduce the size of the output with the -outsize option:  
+
+`gdal_translate -of AAIGrid -outsize 25% 25% input.tif output.asc`
 
 The result is a  75% smaller 584M file, now with 5288 rows by 4470 columns, or 23,637,360 data points.
 
