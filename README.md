@@ -15,6 +15,9 @@ Follow link above to install the [GDAL](http://www.gdal.org) library.
 
 ### Try it out with this sample use case
 Satellites take images of the earth. Based on the amount of light seen at night in any region, it's possible to estimate population. Let's aggregate the popluation of Colombia by municpality, or, in UN terms, [administrative region](https://en.wikipedia.org/wiki/Administrative_division) level 2!
+
+The output of this exercise will be a key value store of [admin id](https://medium.com/@mikefabrikant/using-open-and-private-data-to-improve-decision-making-in-the-humanitarian-world-magic-box-and-da57dfe7d492) to population figure.
+
 - Navigate to [worldpop.org.uk Colombia](http://www.worldpop.org.uk/data/summary/?contselect=Americas&countselect=Colombia&typeselect=Population)
 - Scroll to bottom and click **browse individual files**
 - Download "COL_ppp_v2b_2015_UNadj" to data directory
@@ -105,22 +108,16 @@ Find first/last row numbers and column range that covers the bounding box of the
     function get_direction_indexes(geojson, lats, lons) {
       // Get n, s, e, w, bounds of geo polygon
       var direction_boundaries = get_direction_bounds(geojson);
-
       // Initialize an hash to store indexes in lat/lon arrays where polygon overlaps
       var direction_indexes = {};
-
       // Latitude array goes positive to negative
       // Need neg to pos for binary search
       var temp_lats = lats.slice().reverse();
-
       var n_index = bs.closest(temp_lats, direction_boundaries.n);
       direction_indexes.n = lats.length - n_index;
-
       var s_index = bs.closest(temp_lats, direction_boundaries.s);
       direction_indexes.s = lats.length - s_index;
-
       direction_indexes.e = bs.closest(lons, direction_boundaries.e);
-
       direction_indexes.w = bs.closest(lons, direction_boundaries.w);
       return direction_indexes;
     }
@@ -137,24 +134,54 @@ Now, for each admin, prepare the row numbers and column ranges of pixels to atte
       return new Promise((resolve, reject) => {
         // Prepare to identify which rows in the raster relate to the geoshape
         // The first lines of the raster are meta info. About 7 lines.
-
         var lines_of_meta = Object.keys(meta).length;
-
         // This object will have:
         // the first row with pixels related to the geoshapes's northern most point.
         // the last row with pixels related to the geoshapes's southern most point.
-        // the first and last column indexes with pixels related to the geoshapes's
-        // western and eastern most points.
+        // the first and last column indexes with pixels related to the geoshapes's western and eastern most points.
         var direction_indexes = helper.get_direction_indexes(admin.geometry, lats, lons);
-
         // Create an array to pass to bluebird that contains all rows to process
         row_indexes = Array.range(lines_of_meta + direction_indexes.n, lines_of_meta + direction_indexes.s);
-
         bluebird.each(row_indexes, (row_num) => {
-          return helper.scan_row(row_num, direction_indexes, file, meta, lats, lons)
+          return helper.go_to_row(row_num, direction_indexes, file, meta, lats, lons)
         }, {concurrency: 1})
         .then(() => {
           resolve();
         })
       })
     }
+
+    /**
+     * Open raster and go to row that matches the northern most point of the geoshape
+     * Send line to process_line function which will see if pixel falls within bounds of geoshape
+     * @param{number} row_num - Number of row to pass to process_line
+     * @param{object} direction_indexes - Key value table of direction to row/column index
+     * @param{string} file - Name of raster file to read
+     * @param{object} meta - Meta data for raster file
+     * @param{array} lats - All latitude points
+     * @param{array} lats - All longitude points
+     * @return{Promise} Fulfilled when file is closed.
+     */
+    function go_to_row(row_num, direction_indexes, file, meta, lats, lons) {
+      return new Promise((resolve, reject) => {
+        var count = 0;
+        var lr = new LineByLineReader(rasterDir + file);
+        lr.on('error', function (err) {
+        });
+
+        lr.on('line', function (line) {
+          count++;
+          if (count === row_num) {
+            // Pause line reader so that end of file isn't reached
+            lr.pause();
+            process_line(line, count, direction_indexes, meta, lats, lons)
+            .then(() => {
+              lr.end();
+            })
+          }
+        });
+        lr.on('end', function () {
+          resolve();
+        });
+      })
+    }    
