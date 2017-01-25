@@ -110,4 +110,3 @@ Find first/last row numbers and column range that covers the bounding box of the
       direction_indexes.w = bs.closest(lons, direction_boundaries.w);
       return direction_indexes;
     }
-# mapping-rasters
