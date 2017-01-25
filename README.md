@@ -69,7 +69,8 @@ dx and dy are the dimensions of the pixel cell size.
 
 ### Aggregation
 
-run `node aggregate.js -f COL_ppp_v2b_2015_UNadj.asc -g COL_2.json`
+Run: `node aggregate.js -f COL_ppp_v2b_2015_UNadj.asc -g COL_2.json`
+
 *This repository comes with geojson for Colombia with admin 2 resolution.*
 
 #### Strategy
