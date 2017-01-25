@@ -151,9 +151,8 @@ Now, for each admin, prepare the row numbers and column ranges of pixels to atte
       })
     }
 
+Open raster and go to row that matches the northern most point of the geoshape. Send line to process_line function which will see if pixel falls within bounds of geoshape
     /**
-     * Open raster and go to row that matches the northern most point of the geoshape
-     * Send line to process_line function which will see if pixel falls within bounds of geoshape
      * @param{number} row_num - Number of row to pass to process_line
      * @param{object} direction_indexes - Key value table of direction to row/column index
      * @param{string} file - Name of raster file to read
