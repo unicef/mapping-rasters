@@ -85,7 +85,7 @@ Foreach polygon, get the bounding box.
      * @param{geojson} geoshape - Geojson polygon or multipolygon of an administrative region
      * @return{Promise} Fulfilled when geojson is returned.
      */
-    exports.get_direction_bounds = function(geoshape) {
+    function get_direction_bounds(geoshape) {
       return {
         n: st.yMax(geoshape);
         s: st.yMin(geoshape);
@@ -96,14 +96,16 @@ Foreach polygon, get the bounding box.
 
 Find first/last row numbers and column range that covers the bounding box of the polygon.
 
-    var bs = require('binarysearch');
     /**
      * Return begin and end indexes in latitude and longitude arrays
      * for segments that are within bounding box of polygon
      * @param{object} direction_points - Polygon or Multipolygon of an administrative region
      * @return{object} Object with indexes in latitudes and longitudes arrays
      */
-    exports.get_direction_indexes = function (direction_boundaries, lats, lons) {
+    function get_direction_indexes(geojson, lats, lons) {
+      // Get n, s, e, w, bounds of geo polygon
+      var direction_boundaries = get_direction_bounds(geojson);
+      // Initialize an hash to store indexes in lat/lon arrays where polygon overlaps
       var direction_indexes = {};
       // Latitude array goes positive to negative
       // Need neg to pos for binary search
@@ -115,4 +117,33 @@ Find first/last row numbers and column range that covers the bounding box of the
       direction_indexes.e = bs.closest(lons, direction_boundaries.e);
       direction_indexes.w = bs.closest(lons, direction_boundaries.w);
       return direction_indexes;
+    }
+
+Now, for each admin, prepare the row numbers and column ranges of pixels to attempt to match to its geojson coordinates
+
+    /**
+     * Aggregate pixels that fall within bounding box of geo polygon
+     * @param{object} admin - Geojson feature
+     * @param{object} meta - meta data for raster file
+     * @return{Promise} Fulfilled all pixels in polygon bounding box are aggregated.
+     */
+    function aggregate_values(admin, meta) {
+      return new Promise((resolve, reject) => {
+        // Prepare to identify which rows in the raster relate to the geoshape
+        // The first lines of the raster are meta info. About 7 lines.
+        var lines_of_meta = Object.keys(meta).length;
+        // This object will have:
+        // the first row with pixels related to the geoshapes's northern most point.
+        // the last row with pixels related to the geoshapes's southern most point.
+        // the first and last column indexes with pixels related to the geoshapes's western and eastern most points.
+        var direction_indexes = helper.get_direction_indexes(admin.geometry, lats, lons);
+        // Create an array to pass to bluebird that contains all rows to process
+        row_indexes = Array.range(lines_of_meta + direction_indexes.n, lines_of_meta + direction_indexes.s);
+        bluebird.each(row_indexes, (row_num) => {
+          return helper.scan_row(row_num, direction_indexes, file, meta, lats, lons)
+        }, {concurrency: 1})
+        .then(() => {
+          resolve();
+        })
+      })
     }
