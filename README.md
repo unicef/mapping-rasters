@@ -105,8 +105,10 @@ Find first/last row numbers and column range that covers the bounding box of the
     function get_direction_indexes(geojson, lats, lons) {
       // Get n, s, e, w, bounds of geo polygon
       var direction_boundaries = get_direction_bounds(geojson);
+
       // Initialize an hash to store indexes in lat/lon arrays where polygon overlaps
       var direction_indexes = {};
+
       // Latitude array goes positive to negative
       // Need neg to pos for binary search
       var temp_lats = lats.slice().reverse();
@@ -131,14 +133,19 @@ Now, for each admin, prepare the row numbers and column ranges of pixels to atte
       return new Promise((resolve, reject) => {
         // Prepare to identify which rows in the raster relate to the geoshape
         // The first lines of the raster are meta info. About 7 lines.
+
         var lines_of_meta = Object.keys(meta).length;
+
         // This object will have:
         // the first row with pixels related to the geoshapes's northern most point.
         // the last row with pixels related to the geoshapes's southern most point.
-        // the first and last column indexes with pixels related to the geoshapes's western and eastern most points.
+        // the first and last column indexes with pixels related to the geoshapes's
+        // western and eastern most points.
         var direction_indexes = helper.get_direction_indexes(admin.geometry, lats, lons);
+
         // Create an array to pass to bluebird that contains all rows to process
         row_indexes = Array.range(lines_of_meta + direction_indexes.n, lines_of_meta + direction_indexes.s);
+
         bluebird.each(row_indexes, (row_num) => {
           return helper.scan_row(row_num, direction_indexes, file, meta, lats, lons)
         }, {concurrency: 1})
