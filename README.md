@@ -112,11 +112,15 @@ Find first/last row numbers and column range that covers the bounding box of the
       // Latitude array goes positive to negative
       // Need neg to pos for binary search
       var temp_lats = lats.slice().reverse();
+
       var n_index = bs.closest(temp_lats, direction_boundaries.n);
       direction_indexes.n = lats.length - n_index;
+
       var s_index = bs.closest(temp_lats, direction_boundaries.s);
       direction_indexes.s = lats.length - s_index;
+
       direction_indexes.e = bs.closest(lons, direction_boundaries.e);
+
       direction_indexes.w = bs.closest(lons, direction_boundaries.w);
       return direction_indexes;
     }
