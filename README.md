@@ -185,11 +185,9 @@ Now, for each admin, prepare the row numbers and column ranges of pixels to atte
       })
     }
 
-Iscolate fragment of row that corresponds to geoshape.  Then search each point to see if it falls within geoshape
+Isolate fragment of row that corresponds to geoshape.  Then search each point to see if it falls within geoshape
 
     /**
-     * Iscolate fragment of row that corresponds to geoshape.
-     * Then search each point to see if it falls within geoshape
      * @param{array} line - Entire row of pixel values
      * @param{number} count - Number of current row of raster
      * @param{object} direction_indexes - Key value table of direction to row/column index
@@ -202,7 +200,7 @@ Iscolate fragment of row that corresponds to geoshape.  Then search each point t
     function process_line(line, count, direction_indexes, meta, lats, lons) {
       var lines_of_meta = meta.num_lines;
 
-      // Iscolate fragment of row that corresponds to geoshape.
+      // Isolate fragment of row that corresponds to geoshape.
       // scores are all pixels that fall within the bounding box of the shape.
       var scores = line.split(/\s+/).slice(
         direction_indexes[2], // West
