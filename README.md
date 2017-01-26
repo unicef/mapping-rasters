@@ -184,10 +184,10 @@ Now, for each admin, prepare the row numbers and column ranges of pixels to atte
       })
     }
 
-Iscolate fragment of row that corresponds to geoshape.  Then search each point to see if it falls within geoshape
+Isolate fragment of row that corresponds to geoshape.  Then search each point to see if it falls within geoshape
 
     /**
-     * Iscolate fragment of row that corresponds to geoshape.
+     * Isolate fragment of row that corresponds to geoshape.
      * Then search each point to see if it falls within geoshape
      * @param{array} line - Entire row of pixel values
      * @param{number} count - Number of current row of raster
@@ -245,7 +245,6 @@ Search point within polygon
         };
 
         var jstsPoint = geojsonReader.read(point);
-        console.log(admin.properties.WCOLGEN02_, count, jstsPoint.within(jstsPolygon), lat_lon);
         if (jstsPoint.within(jstsPolygon)) {
           resolve();
         } else {
