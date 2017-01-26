@@ -14,7 +14,7 @@ Follow link above to install the [GDAL](http://www.gdal.org) library.
 - `cp config-sample.js config.js`
 
 ### Try it out with this sample use case
-Satellites take images of the earth. Based on the amount of light seen at night in any region, it's possible to estimate population. Let's aggregate the popluation of Colombia by municpality, or, in UN terms, [administrative region](https://en.wikipedia.org/wiki/Administrative_division) level 2!
+Satellites take images of the earth. Based on the amount of light seen at night in any region, it's possible to estimate population. Let's aggregate the population of Colombia by municipality, or, in UN terms, [administrative region](https://en.wikipedia.org/wiki/Administrative_division) level 2!
 
 The output of this exercise will be a key value store of [admin id](https://medium.com/@mikefabrikant/using-open-and-private-data-to-improve-decision-making-in-the-humanitarian-world-magic-box-and-da57dfe7d492) to population figure.
 
@@ -63,7 +63,6 @@ dx and dy are the dimensions of the pixel cell size.
      * @param{float} y - Column number of current pixel, i.e index in row.
      * @return{Promise} Fulfilled when geojson is returned.
      */
-
     function assign_latlon_to_pixel(meta, y, x) {
       var lon = parseFloat(meta.xllcorner) + (x * (meta.dx || meta.cellsize))
       var lat = parseFloat(meta.yllcorner) + ((meta.nrows - y) * (meta.dy || meta.cellsize))
@@ -185,9 +184,11 @@ Now, for each admin, prepare the row numbers and column ranges of pixels to atte
       })
     }
 
-Isolate fragment of row that corresponds to geoshape.  Then search each point to see if it falls within geoshape
+Iscolate fragment of row that corresponds to geoshape.  Then search each point to see if it falls within geoshape
 
     /**
+     * Iscolate fragment of row that corresponds to geoshape.
+     * Then search each point to see if it falls within geoshape
      * @param{array} line - Entire row of pixel values
      * @param{number} count - Number of current row of raster
      * @param{object} direction_indexes - Key value table of direction to row/column index
@@ -200,7 +201,7 @@ Isolate fragment of row that corresponds to geoshape.  Then search each point to
     function process_line(line, count, direction_indexes, meta, lats, lons) {
       var lines_of_meta = meta.num_lines;
 
-      // Isolate fragment of row that corresponds to geoshape.
+      // Iscolate fragment of row that corresponds to geoshape.
       // scores are all pixels that fall within the bounding box of the shape.
       var scores = line.split(/\s+/).slice(
         direction_indexes[2], // West
@@ -231,20 +232,24 @@ Isolate fragment of row that corresponds to geoshape.  Then search each point to
 Search point within polygon
 
     /**
+     * Search point within polygon
      * @param{array} lat_lon - latitude, longitude
      * @param{number} count - pixel value
      * @return{Promise} Fulfilled when search is complete and value added to admin_id
      */
-    function search_coords(lat_lon, score) {
-      return new Promise(function(resolve, reject) {
-        search.search_coords(lat_lon).then(function(admin_id) {
-          // No admin was found
-          if (admin_id.length === 0) {
-              resolve();
-          } else {
-            admin_to_pop[admin_id] = admin_to_pop[admin_id] ? admin_to_pop[admin_id] + score : score;
-            resolve();
-          }
-        })
+    function search_coords(lat_lon, score, admin, jstsPolygon, admin_to_pop, count) {
+      return new Promise((resolve, reject) => {
+        var point = {
+          type: 'Point',
+          coordinates: lat_lon
+        };
+
+        var jstsPoint = geojsonReader.read(point);
+        console.log(admin.properties.WCOLGEN02_, count, jstsPoint.within(jstsPolygon), lat_lon);
+        if (jstsPoint.within(jstsPolygon)) {
+          resolve();
+        } else {
+          admin_to_pop[admin.properties.WCOLGEN02_] = admin_to_pop[admin.properties.WCOLGEN02_] ? admin_to_pop[admin.properties.WCOLGEN02_] + score : score;
+          resolve();
+        }
       })
-    }
