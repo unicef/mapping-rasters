@@ -150,8 +150,7 @@ Now, for each admin, prepare the row numbers and column ranges of pixels to atte
         })
       })
     }
-
-Open raster and go to row that matches the northern most point of the geoshape. Send line to process_line function which will see if pixel falls within bounds of geoshape.
+ Open raster and go to row that matches the northern most point of the geoshape. Send line to process_line function which will see if pixel falls within bounds of geoshape.
 
     /**
      * @param{number} row_num - Number of row to pass to process_line
@@ -184,4 +183,70 @@ Open raster and go to row that matches the northern most point of the geoshape. 
           resolve();
         });
       })
-    }    
+    }
+
+Iscolate fragment of row that corresponds to geoshape.  Then search each point to see if it falls within geoshape
+
+    /**
+     * Iscolate fragment of row that corresponds to geoshape.
+     * Then search each point to see if it falls within geoshape
+     * @param{array} line - Entire row of pixel values
+     * @param{number} count - Number of current row of raster
+     * @param{object} direction_indexes - Key value table of direction to row/column index
+     * @param{string} file - Name of raster file to read
+     * @param{object} meta - Meta data for raster file
+     * @param{array} lats - All latitude points
+     * @param{array} lats - All longitude points
+     * @return{Promise} Fulfilled when all values return from search
+     */
+    function process_line(line, count, direction_indexes, meta, lats, lons) {
+      var lines_of_meta = meta.num_lines;
+
+      // Iscolate fragment of row that corresponds to geoshape.
+      // scores are all pixels that fall within the bounding box of the shape.
+      var scores = line.split(/\s+/).slice(
+        direction_indexes[2], // West
+        direction_indexes[3]  // East
+      );
+
+      // Only search scores that are not null
+      // Raster in this example has NODATA_value: -3.4028234663852885981e+38
+      // Create key value store of row index to pixel value
+      scores = scores.reduce(function(h, e, i) {
+        if (e != meta.NODATA_value) {
+          h[i] = e;
+        }
+        return h;
+      }, {});
+
+      return new Promise(function(resolve, reject) {
+        bluebird.each(Object.keys(scores), function(index, i) {
+          index = parseInt(index);
+          var lat_lon = [lats[count - lines_of_meta], lons[i]];
+          return search_coords(lat_lon, parseFloat(scores[index]));
+        }, {concurrency: 1000}).then(function() {
+          resolve();
+        })
+      })
+    }
+
+Search point within polygon
+
+    /**
+     * @param{array} lat_lon - latitude, longitude
+     * @param{number} count - pixel value
+     * @return{Promise} Fulfilled when search is complete and value added to admin_id
+     */
+    function search_coords(lat_lon, score) {
+      return new Promise(function(resolve, reject) {
+        search.search_coords(lat_lon).then(function(admin_id) {
+          // No admin was found
+          if (admin_id.length === 0) {
+              resolve();
+          } else {
+            admin_to_pop[admin_id] = admin_to_pop[admin_id] ? admin_to_pop[admin_id] + score : score;
+            resolve();
+          }
+        })
+      })
+    }
