@@ -3,7 +3,9 @@ var rasterDir = config.rasterDir;
 var geojsonDir = config.geojsonDir;
 var helper = require('./lib/util');
 var async = require('async');
-var get_admins = require('./lib/return_admins_for_country');
+var start_time = new Date();
+var moment = require('moment');
+var get_admins = require('./lib/admins_for_country');
 var fs = require('fs');
 var bluebird = require('bluebird');
 var admin_to_pop = {};
@@ -58,7 +60,7 @@ function aggregate_values(admin, meta) {
     row_indexes = Array.range(num_lines_meta + direction_indexes.n, num_lines_meta + direction_indexes.s);
     bluebird.each(row_indexes, (row_num) => {
       return helper.go_to_row(row_num, direction_indexes, file, meta, lats, lons, admin, jstsPolygon, admin_to_pop)
-    }, {concurrency: 10})
+    }, {concurrency: 1})
     .then(() => {
       resolve();
     })
@@ -100,8 +102,9 @@ async.waterfall([
     get_admins.admins_per_country()
     .then(admins => {
       bluebird.each(admins, admin => {
+        console.log(admin_to_pop, moment().diff(start_time, 'minutes'))
         return aggregate_values(admin, meta);
-      }, {concurrency: 10})
+      }, {concurrency: 1})
       .then(() => {
           callback(null, meta);
       })
@@ -116,7 +119,7 @@ async.waterfall([
   console.log(admin_to_pop)
   fs.writeFile(rasterDir + file + '.json', JSON.stringify(admin_to_pop), (err) => {
     if (err) throw err;
-    console.log('It\'s saved!');
+    console.log('It\'s saved!', moment().diff(start_time, 'minutes'));
     process.exit();
   });
 });
