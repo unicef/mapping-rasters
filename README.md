@@ -127,62 +127,79 @@ Now, for each admin, prepare the row numbers and column ranges of pixels to atte
      * Aggregate pixels that fall within bounding box of geo polygon
      * @param{object} admin - Geojson feature
      * @param{object} meta - meta data for raster file
-     * @return{Promise} Fulfilled all pixels in polygon bounding box are aggregated.
+     * @return{Promise} Fulfilled when all pixels in polygon bounding box are aggregated.
      */
     function aggregate_values(admin, meta) {
+      var jstsPolygon = geojsonReader.read({
+        type: admin.geometry.type,
+        coordinates: admin.geometry.coordinates
+      });
+
       return new Promise((resolve, reject) => {
         // Prepare to identify which rows in the raster relate to the geoshape
         // The first lines of the raster are meta info. About 7 lines.
-        var lines_of_meta = Object.keys(meta).length;
+        var num_lines_meta = meta.num_lines;
         // This object will have:
         // the first row with pixels related to the geoshapes's northern most point.
         // the last row with pixels related to the geoshapes's southern most point.
         // the first and last column indexes with pixels related to the geoshapes's western and eastern most points.
         var direction_indexes = helper.get_direction_indexes(admin.geometry, lats, lons);
+        // console.log(direction_indexes, lats[direction_indexes.s+7], lons[direction_indexes.e])
         // Create an array to pass to bluebird that contains all rows to process
-        row_indexes = Array.range(lines_of_meta + direction_indexes.n, lines_of_meta + direction_indexes.s);
-        bluebird.each(row_indexes, (row_num) => {
-          return helper.go_to_row(row_num, direction_indexes, file, meta, lats, lons)
-        }, {concurrency: 1})
-        .then(() => {
-          resolve();
-        })
+        row_indexes = Array.range(num_lines_meta + direction_indexes.n, num_lines_meta + direction_indexes.s);
+        helper.process_rows(row_indexes, direction_indexes, file, meta, lats, lons, admin, jstsPolygon, admin_to_pop)
+        .then(() => { resolve(); })
+        // bluebird.each(row_indexes, (row_num) => {
+        //   return helper.go_to_row(row_num, direction_indexes, file, meta, lats, lons, admin, jstsPolygon, admin_to_pop)
+        // }, {concurrency: 1})
+        // .then(() => {
+        //   resolve();
+        // })
       })
     }
+
  Open raster and go to row that matches the northern most point of the geoshape. Send line to process_line function which will see if pixel falls within bounds of geoshape.
 
-    /**
-     * @param{number} row_num - Number of row to pass to process_line
-     * @param{object} direction_indexes - Key value table of direction to row/column index
-     * @param{string} file - Name of raster file to read
-     * @param{object} meta - Meta data for raster file
-     * @param{array} lats - All latitude points
-     * @param{array} lats - All longitude points
-     * @return{Promise} Fulfilled when file is closed.
-     */
-    function go_to_row(row_num, direction_indexes, file, meta, lats, lons) {
-      return new Promise((resolve, reject) => {
-        var count = 0;
-        var lr = new LineByLineReader(rasterDir + file);
-        lr.on('error', function (err) {
-        });
+     /**
+      * @param{number} row_num - Number of row to pass to process_line
+      * @param{object} direction_indexes - Key value table of direction to row/column index
+      * @param{string} file - Name of raster file to read
+      * @param{object} meta - Meta data for raster file
+      * @param{array} lats - All latitude points
+      * @param{array} lats - All longitude points
+      * @return{Promise} Fulfilled when file is closed.
+      */
+     exports.process_rows = function(row_indexes, direction_indexes, file, meta, lats, lons, admin, jstsPolygon, admin_to_pop) {
+       return new Promise((resolve, reject) => {
+         var lines = [];
+         var count = 0;
+         var lr = new LineByLineReader(rasterDir + file + '.asc');
+         lr.on('error', function (err) {
+           console.log(err);
+           return reject(err);
+         });
 
-        lr.on('line', function (line) {
-          count++;
-          if (count === row_num) {
-            // Pause line reader so that end of file isn't reached
-            lr.pause();
-            process_line(line, count, direction_indexes, meta, lats, lons)
-            .then(() => {
-              lr.end();
-            })
-          }
-        });
-        lr.on('end', function () {
-          resolve();
-        });
-      })
-    }
+         lr.on('line', function (line) {
+           count++;
+           if (count >= row_indexes[0] || count === row_indexes[row_indexes.length-1]) {
+             lines.push(line);
+           }
+           if (count > row_indexes[row_indexes.length-1]) {
+             lr.end();
+           }
+         });
+         lr.on('end', function () {
+           bluebird.each(lines, (line) => {
+             return process_line(line, count, direction_indexes, meta, lats, lons, admin, jstsPolygon, admin_to_pop)
+           }, {concurrency: 1000})
+           .then(() => {
+             lines = [];
+             resolve();
+             }
+           )
+         });
+       })
+     }
 
 Isolate fragment of row that corresponds to geoshape.  Then search each point to see if it falls within geoshape
 
@@ -201,7 +218,7 @@ Isolate fragment of row that corresponds to geoshape.  Then search each point to
     function process_line(line, count, direction_indexes, meta, lats, lons) {
       var lines_of_meta = meta.num_lines;
 
-      // Iscolate fragment of row that corresponds to geoshape.
+      // Isolate fragment of row that corresponds to geoshape.
       // scores are all pixels that fall within the bounding box of the shape.
       var scores = line.split(/\s+/).slice(
         direction_indexes[2], // West
