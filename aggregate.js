@@ -38,7 +38,7 @@ var exec = require('child_process').exec;
  * Aggregate pixels that fall within bounding box of geo polygon
  * @param{object} admin - Geojson feature
  * @param{object} meta - meta data for raster file
- * @return{Promise} Fulfilled all pixels in polygon bounding box are aggregated.
+ * @return{Promise} Fulfilled when all pixels in polygon bounding box are aggregated.
  */
 function aggregate_values(admin, meta) {
   var jstsPolygon = geojsonReader.read({
@@ -58,12 +58,14 @@ function aggregate_values(admin, meta) {
     // console.log(direction_indexes, lats[direction_indexes.s+7], lons[direction_indexes.e])
     // Create an array to pass to bluebird that contains all rows to process
     row_indexes = Array.range(num_lines_meta + direction_indexes.n, num_lines_meta + direction_indexes.s);
-    bluebird.each(row_indexes, (row_num) => {
-      return helper.go_to_row(row_num, direction_indexes, file, meta, lats, lons, admin, jstsPolygon, admin_to_pop)
-    }, {concurrency: 1})
-    .then(() => {
-      resolve();
-    })
+    helper.process_rows(row_indexes, direction_indexes, file, meta, lats, lons, admin, jstsPolygon, admin_to_pop)
+    .then(() => { resolve(); })
+    // bluebird.each(row_indexes, (row_num) => {
+    //   return helper.go_to_row(row_num, direction_indexes, file, meta, lats, lons, admin, jstsPolygon, admin_to_pop)
+    // }, {concurrency: 1})
+    // .then(() => {
+    //   resolve();
+    // })
   })
 }
 
@@ -99,10 +101,13 @@ async.waterfall([
 
   // Load array of admins
   function(meta, callback) {
+    // Get array of admins per country
     get_admins.admins_per_country()
     .then(admins => {
       bluebird.each(admins, admin => {
-        console.log(admin_to_pop, moment().diff(start_time, 'minutes'))
+      console.log(admin_to_pop, moment().diff(start_time, 'minutes'))
+      console.log('\n')
+
         return aggregate_values(admin, meta);
       }, {concurrency: 1})
       .then(() => {
