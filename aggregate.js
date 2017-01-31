@@ -30,7 +30,13 @@ parser.addArgument(
   {help: 'Name of geojson file to map to raster'}
 );
 
+parser.addArgument(
+  ['-t', '--test'],
+  {help: 'Any value if this is a test'}
+);
+
 var args = parser.parseArgs();
+var test = args.test;
 var file = args.file || 'COL_ppp_v2b_2015_UNadj2'
 var exec = require('child_process').exec;
 
@@ -49,11 +55,12 @@ function aggregate_values(admin, meta) {
   return new Promise((resolve, reject) => {
     // Prepare to identify which rows in the raster relate to the geoshape
     // The first lines of the raster are meta info. About 7 lines.
-    var num_lines_meta = meta.num_lines;
+    var num_lines_meta = meta.num_lines + 1;
     // This object will have:
     // the first row with pixels related to the geoshapes's northern most point.
     // the last row with pixels related to the geoshapes's southern most point.
     // the first and last column indexes with pixels related to the geoshapes's western and eastern most points.
+
     var direction_indexes = helper.get_direction_indexes(admin.geometry, lats, lons);
     // console.log(direction_indexes, lats[direction_indexes.s+7], lons[direction_indexes.e])
     // Create an array to pass to bluebird that contains all rows to process
@@ -87,6 +94,7 @@ async.waterfall([
     for(i = 0; i < num_rows; i++) {
       lats.push(helper.assign_latlon_to_pixel(meta, i, 0)[0])
     }
+
     callback(null, meta);
   },
 
@@ -96,18 +104,19 @@ async.waterfall([
     for(i = 0; i < num_cols; i++) {
       lons.push(helper.assign_latlon_to_pixel(details, 0, i)[1])
     }
+    // console.log(lats[4], lons[110])
+    // process.exit()
     callback(null, details);
   },
 
   // Load array of admins
   function(meta, callback) {
     // Get array of admins per country
-    get_admins.admins_per_country()
+    get_admins.admins_per_country(test)
     .then(admins => {
       bluebird.each(admins, admin => {
       console.log(admin_to_pop, moment().diff(start_time, 'minutes'))
       console.log('\n')
-
         return aggregate_values(admin, meta);
       }, {concurrency: 1})
       .then(() => {
