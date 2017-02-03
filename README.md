@@ -261,9 +261,9 @@ Search point within polygon
 
         var jstsPoint = geojsonReader.read(point);
         if (jstsPoint.within(jstsPolygon)) {
+          admin_to_pop[admin.properties.WCOLGEN02_] = admin_to_pop[admin.properties.WCOLGEN02_] ? admin_to_pop[admin.properties.WCOLGEN02_] + score : score;
           resolve();
         } else {
-          admin_to_pop[admin.properties.WCOLGEN02_] = admin_to_pop[admin.properties.WCOLGEN02_] ? admin_to_pop[admin.properties.WCOLGEN02_] + score : score;
           resolve();
         }
       })
